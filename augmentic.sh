@@ -1,67 +1,89 @@
 #!/bin/bash
 
+# This script automates the setup for a basic Google ADK agent project.
+# It creates a virtual environment, installs ADK, and generates
+# the necessary directory structure and template files.
+
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
 # --- Configuration ---
-VENV_NAME="augmentic"
-PARENT_DIR_NAME="parent_folder" # Name for the directory containing the agent
-AGENT_DIR_NAME="multi_tool_agent" # Name for the agent module directory
-PROJECT_DIR="${PARENT_DIR_NAME}/${AGENT_DIR_NAME}" # Combined path
-PYTHON_CMD="python3" # Use python3 for clarity, adjust if needed
+VENV_NAME="augmentic_adk_env" # Renamed for clarity
+PARENT_DIR_NAME="adk_agent_project" # Renamed for clarity
+AGENT_DIR_NAME="multi_tool_agent"
+PROJECT_DIR="${PARENT_DIR_NAME}/${AGENT_DIR_NAME}"
+PYTHON_CMD="python3" # Assumes python3 is available
 
 # --- Script Start ---
-echo "Starting ADK Agent Setup (Weather/Time Example)..."
-echo "-----------------------------------------------------"
+echo "====================================================="
+echo " Starting Google ADK Agent Setup (Weather/Time) "
+echo "====================================================="
+echo "This script will create:"
+echo "  - Python virtual environment: ./${VENV_NAME}"
+echo "  - Project structure:        ./${PROJECT_DIR}"
+echo "WARNING: Existing files in ./${PROJECT_DIR} may be overwritten."
+read -p "Press Enter to continue, or Ctrl+C to cancel..."
 
-# 1. Create & Activate Virtual Environment (within script scope)
-echo "1. Creating Python virtual environment './${VENV_NAME}'..."
+echo
+echo "--- Phase 1: Setting up Environment & Dependencies ---"
+
+# 1. Create Python Virtual Environment
+echo "[1/3] Creating Python virtual environment './${VENV_NAME}'..."
 if ! ${PYTHON_CMD} -m venv ${VENV_NAME}; then
-    echo "ERROR: Failed to create virtual environment. Ensure Python 3 and venv are installed."
+    echo "ERROR: Failed to create virtual environment using '${PYTHON_CMD} -m venv'. Ensure Python 3 and the 'venv' module are correctly installed."
     exit 1
 fi
+echo "      Virtual environment created."
 
-echo "   Activating virtual environment for installation..."
-# Activate within the script's subshell to install packages into it
+# Activate within the script's subshell for installation
+echo "      Activating virtual environment for installation..."
 source ${VENV_NAME}/bin/activate
 
-# Install ADK
-echo "2. Installing google-adk package..."
-if ! pip install google-adk; then
-    echo "ERROR: Failed to install google-adk. Check pip and network connection."
+# 2. Install ADK and Dependencies
+echo "[2/3] Installing google-adk and tzdata packages..."
+if ! pip install --quiet google-adk tzdata; then # Added tzdata, --quiet reduces noise
+    echo "ERROR: Failed to install required packages (google-adk, tzdata). Check pip and network connection."
+    # Consider cleaning up venv on failure?
+    # deactivate
     exit 1
 fi
-echo "   google-adk installed successfully."
+echo "      google-adk and tzdata installed successfully."
 
-# Optional: Verify installation
-echo "   Verifying installation..."
-pip show google-adk | grep Version
+# 3. Verify ADK Installation (Optional but Recommended)
+echo "[3/3] Verifying google-adk installation..."
+pip show google-adk || echo "      Verification command failed, but installation might still be okay."
 
-# Deactivate (script's subshell activation ends anyway)
+# Deactivate script's subshell activation
 # deactivate
 
-echo "-----------------------------------------------------"
-# 2. Create Agent Project Structure
-echo "3. Creating project structure './${PROJECT_DIR}'..."
+echo "--- Environment Setup Complete ---"
+echo
+
+echo "--- Phase 2: Creating Agent Project Files ---"
+
+# 1. Create Project Directory Structure
+echo "[1/4] Creating project structure './${PROJECT_DIR}'..."
 mkdir -p ${PROJECT_DIR}
-echo "   Project directory created."
+echo "      Directory structure created."
 
-echo "4. Creating '__init__.py'..."
+# 2. Create __init__.py
+echo "[2/4] Creating '${PROJECT_DIR}/__init__.py'..."
 echo "from . import agent" > ${PROJECT_DIR}/__init__.py
-echo "   __init__.py created."
+echo "      __init__.py created."
 
-echo "5. Creating 'agent.py'..."
-# Use cat with heredoc for multi-line content
+# 3. Create agent.py
+echo "[3/4] Creating '${PROJECT_DIR}/agent.py'..."
+# Use cat with heredoc for multi-line content, preventing shell expansion
 cat << 'EOF' > ${PROJECT_DIR}/agent.py
 import datetime
 import logging
 from zoneinfo import ZoneInfo
-# Use LlmAgent as the base for models like Gemini
+# Use LlmAgent for models like Gemini
 from google.adk.agents import LlmAgent
 from google.adk.tools import FunctionTool
 
-# Setup basic logging for visibility inside the agent/tools
-logging.basicConfig(level=logging.INFO)
+# Setup basic logging for visibility inside the agent/tools when run via adk web/run
+logging.basicConfig(level=logging.INFO, format='%(asctime)s [%(levelname)s] %(name)s: %(message)s')
 logger = logging.getLogger(__name__)
 
 # Define tool functions
@@ -75,15 +97,17 @@ def get_weather(city: str) -> dict:
         dict: status and result or error msg.
     """
     logger.info(f"Tool Function: get_weather called with city='{city}'")
+    # Simulate API call - only works for New York in this example
     if city.lower() == "new york":
         return {
             "status": "success",
             "report": (
                 "The weather in New York is sunny with a temperature of 25 degrees"
-                " Celsius (41 degrees Fahrenheit)."
+                " Celsius (77 degrees Fahrenheit)." # Corrected Fahrenheit
             ),
         }
     else:
+        logger.warning(f"Weather info for '{city}' not available.")
         return {
             "status": "error",
             "error_message": f"Weather information for '{city}' is not available.",
@@ -100,9 +124,11 @@ def get_current_time(city: str) -> dict:
         dict: status and result or error msg.
     """
     logger.info(f"Tool Function: get_current_time called with city='{city}'")
+    # Simulate timezone lookup - only works for New York
     if city.lower() == "new york":
         tz_identifier = "America/New_York"
     else:
+        logger.warning(f"Timezone info for '{city}' not available.")
         return {
             "status": "error",
             "error_message": (
@@ -111,19 +137,19 @@ def get_current_time(city: str) -> dict:
         }
 
     try:
-        # ZoneInfo requires the 'tzdata' package on some systems
-        # Add 'pip install tzdata' to dependencies if needed
+        # ZoneInfo requires the 'tzdata' package on some systems (installed by setup script)
         tz = ZoneInfo(tz_identifier)
         now = datetime.datetime.now(tz)
         report = (
-            f'The current time in {city} is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
+            f'The current time in {city} ({tz_identifier}) is {now.strftime("%Y-%m-%d %H:%M:%S %Z%z")}'
         )
         return {"status": "success", "report": report}
     except Exception as e:
-        logger.error(f"Error in get_current_time: {e}", exc_info=True)
+        # Handle potential ZoneInfo errors or other datetime issues
+        logger.error(f"Error in get_current_time for {city}: {e}", exc_info=True)
         return {"status": "error", "error_message": f"Error getting time for {city}: {e}"}
 
-# Explicitly wrap functions in FunctionTool
+# Explicitly wrap functions in FunctionTool (standard ADK practice)
 tools_list = [
     FunctionTool(func=get_weather),
     FunctionTool(func=get_current_time)
@@ -132,32 +158,33 @@ tools_list = [
 # Define the root agent using LlmAgent
 root_agent = LlmAgent(
     name="weather_time_agent",
-    # Ensure model name is current and accessible
+    # Ensure model name is current and accessible via your configured API key/Vertex setup
+    # Check ADK documentation for available models.
     model="gemini-1.5-flash-latest", # Or "gemini-pro" or other compatible model
     description=(
-        "Agent to answer questions about the time and weather in New York City."
+        "An agent that can provide the current time and weather information, currently only for New York City."
     ),
     instruction=(
-        "You can answer questions about the current time and weather, but ONLY for New York City. "
-        "Use the available tools ('get_weather', 'get_current_time') to get the information when asked."
-        "Politely state that you cannot provide information for other cities."
+        "You are a helpful assistant that provides weather and time information. "
+        "Currently, you ONLY have information for New York City (NYC). "
+        "Use the available tools ('get_weather', 'get_current_time') when asked about time or weather in NYC. "
+        "If asked about any other city, politely state that you only have information for New York City and cannot fulfill the request."
     ),
     tools=tools_list,
 )
 
-logger.info(f"ADK Agent '{root_agent.name}' defined in agent.py")
+logger.info(f"ADK Agent '{root_agent.name}' defined successfully in agent.py")
 
-# Note: To run this agent, you typically need an entry point that uses
-# google.adk.runners.Runner, which is often handled by 'adk web' or 'adk run'.
 EOF
-echo "   agent.py created."
+echo "      agent.py created with example agent."
 
-echo "6. Creating '.env' file (template)..."
+# 4. Create .env file template
+echo "[4/4] Creating '.env' file (template)..."
 cat << 'EOF' > ${PROJECT_DIR}/.env
 # --- .env Configuration ---
 # Instructions: Uncomment and fill ONLY ONE section below (either Option 1 OR Option 2).
 # Ensure you replace placeholder values with your actual credentials/project info.
-# Make sure there are no leading/trailing spaces around the '=' sign.
+# Make sure there are no leading/trailing spaces around the '=' sign or quotes unless intended.
 
 # --- Option 1: Using Gemini via Google AI Studio API Key ---
 # 1. Get a key from https://aistudio.google.com/app/apikey
@@ -183,45 +210,53 @@ cat << 'EOF' > ${PROJECT_DIR}/.env
 # GOOGLE_APPLICATION_CREDENTIALS="/path/to/your/vertex-service-account-key.json"
 
 EOF
-echo "   .env file created. **CRITICAL: You MUST edit this file before running the agent!**"
+echo "      .env template created."
+echo ""
+echo "      ******************************************************"
+echo "      * CRITICAL: You MUST edit './${PROJECT_DIR}/.env' *"
+echo "      *           before running the agent!              *"
+echo "      ******************************************************"
 
-echo "-----------------------------------------------------"
-echo " Initial Setup Complete!"
-echo "-----------------------------------------------------"
+echo "--- Project File Setup Complete ---"
+echo
+
+echo "====================================================="
+echo " Setup Finished Successfully!"
+echo "====================================================="
 echo ""
 echo " === ACTION REQUIRED: Configure and Run === "
 echo ""
 echo " 1. **Edit the '.env' File:**"
-echo "    Open the file './${PROJECT_DIR}/.env' in a text editor:"
-echo "    ==> nano ${PROJECT_DIR}/.env"
-echo "    - Choose EITHER Option 1 (AI Studio Key) OR Option 2 (Vertex AI)."
-echo "    - Uncomment the lines for your chosen option."
-echo "    - Replace placeholder values (API Key or Project ID/Location) with your actual details."
-echo "    - Ensure the *other* option remains commented out."
-echo "    - Save and exit (Ctrl+X, then Y, then Enter in nano)."
+echo "    + Open the file './${PROJECT_DIR}/.env' in your editor (e.g., nano, vim, code)."
+echo "      Command: nano ${PROJECT_DIR}/.env"
+echo "    + Choose EITHER Option 1 (AI Studio Key) OR Option 2 (Vertex AI)."
+echo "    + Uncomment the relevant lines for your chosen option."
+echo "    + Replace placeholder values (API Key or Project ID/Location) with your actual details."
+echo "    + Ensure the *other* option remains commented out (lines start with '#')."
+echo "    + Save the file and exit the editor."
 echo ""
-echo " 2. **Activate Environment & Run Agent:**"
-echo "    Open a NEW terminal or use your current one, then run:"
+echo " 2. **Activate Environment & Run ADK Web UI:**"
+echo "    + Open a NEW terminal window/tab (or use your current one)."
+echo "    + Activate the virtual environment:"
+echo "      ==> source ${VENV_NAME}/bin/activate"
+echo "    + Navigate to the PARENT directory created by this script:"
+echo "      ==> cd ${PARENT_DIR_NAME}"
+echo "    + Launch the ADK Development Web UI:"
+echo "      ==> adk web"
 echo ""
-echo "    # Activate the virtual environment:"
-echo "    source ${VENV_NAME}/bin/activate"
-echo ""
-echo "    # Navigate to the PARENT directory:"
-echo "    cd ${PARENT_DIR_NAME}"
-echo ""
-echo "    # Launch the ADK Web UI:"
-echo "    adk web"
-echo ""
-echo " 3. **Use the Agent:**"
-echo "    - Open the URL provided by 'adk web' (usually http://localhost:8000) in your browser."
-echo "    - Select 'multi_tool_agent' from the agent dropdown."
-echo "    - Try asking: 'What time is it in New York?' or 'How is the weather in New York?'"
-echo "    - Ask about another city to see the refusal message."
+echo " 3. **Use the Agent in the Web UI:**"
+echo "    + The 'adk web' command will output a URL (usually http://localhost:8000)."
+echo "    + Open this URL in your web browser."
+echo "    + In the top-left dropdown menu, select the agent: 'multi_tool_agent'."
+echo "    + In the chat input box, try asking:"
+echo "      - 'What time is it in New York?'"
+echo "      - 'How's the weather in New York?'"
+echo "      - 'What is the weather like in London?' (To test the agent's limitation)"
 echo ""
 echo " --- Troubleshooting ---"
-echo "  - If 'multi_tool_agent' is missing: Make sure you ran 'adk web' from './${PARENT_DIR_NAME}'."
-echo "  - If API errors occur: Double-check your '.env' configuration and ADC authentication."
-echo "  - Remember to activate the venv ('source ${VENV_NAME}/bin/activate') in every new terminal."
+echo "  - If 'multi_tool_agent' is not in dropdown: Ensure you ran 'adk web' from the './${PARENT_DIR_NAME}' directory (NOT inside '${AGENT_DIR_NAME}')."
+echo "  - If API errors occur: Double-check your '.env' settings, ensure the correct section is active, API key/project ID is valid, and ADC is configured if using Vertex."
+echo "  - Venv Activation: Remember to run 'source ${VENV_NAME}/bin/activate' in every new terminal session where you want to use 'adk' commands for this project."
 echo "-----------------------------------------------------"
 
 exit 0
