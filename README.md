@@ -1,2 +1,2 @@
-# adk-kickstart
-Agent Development Kit agent deployment bash script
+# augmentic 0.0.0
+Augmentic Development Kit agent0
