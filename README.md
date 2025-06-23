@@ -1,5 +1,5 @@
 # augmentic 0.0.0
-Augmentic Development Kit agent000
+createse Augmentic Development Kit agent000
 
 # Google ADK Agent Project Setup Script
 
