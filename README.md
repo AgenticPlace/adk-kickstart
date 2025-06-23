@@ -7,10 +7,10 @@ Augmentic Development Kit agent000
 
 This Bash script automates the initial setup for a basic Google Agent Development Kit (ADK) agent project. It's designed to get you up and running quickly by:<br /><br />
 
-1.  Creating a dedicated Python virtual environment.<br /><br />
-2.  Installing the `google-adk` library and necessary dependencies (`tzdata`).<br /><br />
-3.  Generating a standard directory structure for your ADK agent.<br /><br />
-4.  Populating the structure with essential template files, including:<br /><br />
+1.  Creating a dedicated Python virtual environment.
+2.  Installing the `google-adk` library and necessary dependencies (`tzdata`).
+3.  Generating a standard directory structure for your ADK agent.
+4.  Populating the structure with essential template files, including:
 ```txt
     *   `__init__.py`: To make the agent directory a Python package.
     *   `agent.py`: A sample multi-tool agent (Weather & Time for New York City) using `LlmAgent` and `FunctionTool`.
@@ -20,9 +20,9 @@ The example agent is configured to provide weather and time information, but **o
 
 ## ✨ Features
 
-*   **Automated Environment Setup:** Creates a Python virtual environment to isolate project dependencies.<br /><br />
-*   **ADK Installation:** Installs `google-adk` and `tzdata` (for timezone support in the example agent).<br /><br />
-*   **Project Scaffolding:** Generates a clean directory structure:<br /><br />
+*   **Automated Environment Setup:** Creates a Python virtual environment to isolate project dependencies.
+*   **ADK Installation:** Installs `google-adk` and `tzdata` (for timezone support in the example agent).
+*   **Project Scaffolding:** Generates a clean directory structure:
     ```
     .
     ├── augmentic_adk_env/      # Python virtual environment
@@ -33,13 +33,13 @@ The example agent is configured to provide weather and time information, but **o
     │       └── .env
     └── setup_adk_agent.sh      # This script
     ```
-*   **Sample Agent Code:** Provides a working `agent.py` with:<br /><br />
-    *   An `LlmAgent` (configured for `gemini-1.5-flash-latest`).<br /><br />
-    *   Two `FunctionTool` examples: `get_weather` and `get_current_time`.<br /><br />
-    *   Basic logging within the agent and tools.<br /><br />
-    *   Clear instructions to the LLM about its capabilities and limitations (NYC only).<br /><br />
-*   **Configuration Template:** Creates an `.env` template file with instructions for setting up API access via Google AI Studio API Key or Vertex AI.<br /><br />
-*   **User-Friendly Prompts:** Guides the user through the setup process.<br /><br />
+*   **Sample Agent Code:** Provides a working `agent.py` with:
+    *   An `LlmAgent` (configured for `gemini-1.5-flash-latest`).
+    *   Two `FunctionTool` examples: `get_weather` and `get_current_time`.
+    *   Basic logging within the agent and tools.
+    *   Clear instructions to the LLM about its capabilities and limitations (NYC only).
+*   **Configuration Template:** Creates an `.env` template file with instructions for setting up API access via Google AI Studio API Key or Vertex AI.
+*   **User-Friendly Prompts:** Guides the user through the setup process.
 
 ## 📋 Prerequisites
 
